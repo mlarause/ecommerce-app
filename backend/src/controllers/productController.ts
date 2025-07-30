@@ -1,15 +1,16 @@
 import { Request, Response } from 'express';
-import Product, { IProduct } from '../models/Product';
+import Product, { IProduct } from '../models/Product'; // Corrección
 import Category from '../models/Category';
 import Subcategory from '../models/Subcategory';
 
 export const getProducts = async (req: Request, res: Response) => {
   try {
-    const products = await Product.find().populate('category').populate('subcategory');
+    const products = await Product.find()
+      .populate('category')
+      .populate('subcategory');
     res.json(products);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Error al obtener productos' });
   }
 };
 

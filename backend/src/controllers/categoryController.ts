@@ -1,27 +1,22 @@
 import { Request, Response } from 'express';
-import Category, { ICategory } from '../models/Category';
+import Category, { ICategory } from '../models/Category'; // Corrección
 
 export const getCategories = async (req: Request, res: Response) => {
   try {
     const categories = await Category.find();
     res.json(categories);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Error al obtener categorías' });
   }
 };
 
-export const createCategory = async (req: Request, res: Response) => {
+export const createCategory = async (req: Request<{}, {}, ICategory>, res: Response) => {
   try {
-    const { name, description } = req.body;
-    
-    const category = new Category({ name, description });
+    const category = new Category(req.body);
     await category.save();
-    
     res.status(201).json(category);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Error al crear categoría' });
   }
 };
 
