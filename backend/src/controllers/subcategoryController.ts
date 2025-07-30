@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Subcategory from '../models/Subcategory';
+import Subcategory, { ISubcategory } from '../models/Subcategory'; // Corrección
 import Category from '../models/Category';
 
 export const getSubcategories = async (req: Request, res: Response) => {
@@ -7,8 +7,7 @@ export const getSubcategories = async (req: Request, res: Response) => {
     const subcategories = await Subcategory.find().populate('category');
     res.json(subcategories);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Error al obtener subcategorías' });
   }
 };
 
