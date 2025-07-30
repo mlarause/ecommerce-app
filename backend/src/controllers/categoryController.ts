@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import Category, { ICategory } from '../models/Category'; // Corrección
+import Category, { ICategory } from '../models/Category';
+import { AuthenticatedRequest } from '../middlewares/auth';
 
 export const getCategories = async (req: Request, res: Response) => {
   try {
@@ -16,7 +17,7 @@ export const createCategory = async (req: Request<{}, {}, ICategory>, res: Respo
     await category.save();
     res.status(201).json(category);
   } catch (error) {
-    res.status(500).json({ message: 'Error al crear categoría' });
+    res.status(500).json({ message: 'Error creating category' });
   }
 };
 
@@ -41,7 +42,7 @@ export const updateCategory = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteCategory = async (req: Request, res: Response) => {
+export const deleteCategory = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Only admin can delete categories' });

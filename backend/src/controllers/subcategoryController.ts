@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import Subcategory, { ISubcategory } from '../models/Subcategory'; // Corrección
+import Subcategory, { ISubcategory } from '../models/Subcategory';
 import Category from '../models/Category';
+import { AuthenticatedRequest } from '../middlewares/auth';
 
 export const getSubcategories = async (req: Request, res: Response) => {
   try {
@@ -61,7 +62,7 @@ export const updateSubcategory = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteSubcategory = async (req: Request, res: Response) => {
+export const deleteSubcategory = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Only admin can delete subcategories' });

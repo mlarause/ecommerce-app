@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import Product, { IProduct } from '../models/Product'; // Corrección
+import Product, { IProduct } from '../models/Product';
 import Category from '../models/Category';
 import Subcategory from '../models/Subcategory';
+import { AuthenticatedRequest } from '../middlewares/auth';
 
 export const getProducts = async (req: Request, res: Response) => {
   try {
@@ -64,7 +65,7 @@ export const updateProduct = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteProduct = async (req: Request, res: Response) => {
+export const deleteProduct = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Only admin can delete products' });

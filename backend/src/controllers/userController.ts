@@ -15,9 +15,15 @@ export const createUser = async (req: Request<{}, {}, Omit<IUser, 'comparePasswo
   try {
     const { password, ...userData } = req.body;
     
+    // Validación de email existente
+    const existingUser = await User.findOne({ email: userData.email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already in use' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    
+
     const user = new User({
       ...userData,
       password: hashedPassword
@@ -25,14 +31,17 @@ export const createUser = async (req: Request<{}, {}, Omit<IUser, 'comparePasswo
 
     await user.save();
     
-    const userResponse = user.toObject();
+    // No retornar password
+    const userResponse = user.toObject() as any;
     delete userResponse.password;
-    
+
     res.status(201).json(userResponse);
   } catch (error) {
-    res.status(500).json({ message: 'Error al crear usuario' });
+    console.error(error);
+    res.status(500).json({ message: 'Error creating user' });
   }
 };
+
 
 export const updateUser = async (req: Request<{ id: string }, {}, Partial<IUser>>, res: Response) => {
   try {
@@ -44,19 +53,20 @@ export const updateUser = async (req: Request<{ id: string }, {}, Partial<IUser>
       update.password = await bcrypt.hash(password, salt);
     }
 
-    const user = await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       update,
       { new: true }
     ).select('-password');
 
-    if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(user);
+    res.json(updatedUser);
   } catch (error) {
-    res.status(500).json({ message: 'Error al actualizar usuario' });
+    console.error(error);
+    res.status(500).json({ message: 'Error updating user' });
   }
 };
 
@@ -74,9 +84,14 @@ export const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
-// Método para comparar passwords (debe estar en el modelo User)
-declare module '../models/User' {
-  interface IUser {
-    comparePassword(password: string): Promise<boolean>;
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user' });
   }
-}
+};
