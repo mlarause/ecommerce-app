@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Subcategory from '../models/Subcategory';
+import Subcategory, { ISubcategory } from '../models/Subcategory';
 import Category from '../models/Category';
 
 export const getSubcategories = async (req: Request, res: Response) => {
