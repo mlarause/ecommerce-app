@@ -1,57 +1,79 @@
+// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
-import { User } from '../api/auth';
+import { User } from '../types';
 import { login as apiLogin, getCurrentUser as apiGetCurrentUser } from '../api/auth';
+import { useNavigate } from 'react-router-dom';
 
-interface AuthContextData {
+interface AuthContextType {
   user: User | null;
-  loading: boolean;
+  token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
+  loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextData>({} as AuthContextData);
+const AuthContext = createContext<AuthContextType>(null!);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const token = await SecureStore.getItemAsync('token');
-        if (token) {
-          const response = await apiGetCurrentUser();
-          setUser(response.data);
+    const initializeAuth = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        try {
+          const userData = await apiGetCurrentUser();
+          setUser(userData);
+          setToken(storedToken);
+        } catch (error) {
+          localStorage.removeItem('token');
         }
-      } catch (error) {
-        console.error('Failed to load user', error);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
-    
-    loadUser();
+    initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await apiLogin({ email, password });
-    await SecureStore.setItemAsync('token', response.data.token);
-    setUser(response.data.user);
+  const handleLogin = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const { token: newToken, user: userData } = await apiLogin({ email, password });
+      localStorage.setItem('token', newToken);
+      setUser(userData);
+      setToken(newToken);
+      navigate('/');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = async () => {
-    await SecureStore.deleteItemAsync('token');
+  const handleLogout = () => {
+    localStorage.removeItem('token');
     setUser(null);
+    setToken(null);
+    navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token,
+      login: handleLogin,
+      logout: handleLogout,
+      loading
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

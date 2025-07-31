@@ -1,33 +1,37 @@
-import { useState } from 'react';
+import { useCallback } from 'react';
 import axios from 'axios';
-import { API_URL } from '../constants/app';
+import { API_URL } from '../constants/app'; // Usando ruta correcta
+import { useAuth } from '../contexts/AuthContext'; // Ruta correcta
 
 export const useApi = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { logout } = useAuth();
 
-  const request = async (config: {
+  const request = useCallback(async (config: {
     method: 'get' | 'post' | 'put' | 'delete';
     url: string;
     data?: any;
+    params?: any;
   }) => {
-    setLoading(true);
-    setError(null);
-    
     try {
       const response = await axios({
-        ...config,
-        url: `${API_URL}${config.url}`,
-        withCredentials: true
+        baseURL: API_URL,
+        method: config.method,
+        url: config.url,
+        data: config.data,
+        params: config.params,
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
       return response.data;
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error de servidor');
-      throw err;
-    } finally {
-      setLoading(false);
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        logout();
+      }
+      throw error.response?.data?.message || 'Error de servidor';
     }
-  };
+  }, [logout]);
 
-  return { request, loading, error };
+  return { request };
 };
