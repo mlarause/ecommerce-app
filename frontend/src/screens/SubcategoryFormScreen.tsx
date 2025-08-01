@@ -1,154 +1,94 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Button, TextInput, Text, useTheme, ActivityIndicator, Picker } from 'react-native-paper';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
+import { Button, TextInput, ActivityIndicator } from 'react-native-paper';
+import axios from 'axios';
+import { API_URL } from '../constants/app';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { getSubcategory, createSubcategory, updateSubcategory } from '../api/subcategories';
-import { getCategories } from '../api/categories';
-import { Subcategory, Category } from '../api/subcategories';
-
-type SubcategoryFormScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SubcategoryForm'>;
-
-const SubcategorySchema = Yup.object().shape({
-  name: Yup.string().required('Required'),
-  description: Yup.string(),
-  category: Yup.string().required('Required'),
-});
 
 const SubcategoryFormScreen = () => {
-  const route = useRoute();
-  const navigation = useNavigation<SubcategoryFormScreenNavigationProp>();
-  const { colors } = useTheme();
-  const [initialValues, setInitialValues] = useState<Subcategory>({
-    name: '',
-    description: '',
-    category: '',
-  });
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { id } = route.params as { id?: string };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
-        
-        // Fetch categories
-        const categoriesResponse = await getCategories();
+        // Obtener categorías
+        const categoriesResponse = await axios.get(`${API_URL}/categories`);
         setCategories(categoriesResponse.data);
-        
-        // Fetch subcategory if editing
-        const { id, categoryId } = route.params as { id?: string; categoryId?: string };
+
+        // Si estamos editando, cargar los datos de la subcategoría
         if (id) {
-          const response = await getSubcategory(id);
-          setInitialValues(response.data);
-        } else if (categoryId) {
-          setInitialValues(prev => ({
-            ...prev,
-            category: categoryId
-          }));
+          const response = await axios.get(`${API_URL}/subcategories/${id}`);
+          setName(response.data.name);
+          setDescription(response.data.description || '');
+          setCategoryId(response.data.category.id);
         }
       } catch (error) {
-        Alert.alert('Error', 'Failed to fetch data');
-        navigation.goBack();
+        Alert.alert('Error', 'Error al cargar los datos');
       } finally {
-        setLoading(false);
+        setLoadingData(false);
       }
     };
-    
-    fetchData();
-  }, [route.params]);
 
-  const handleSubmit = async (values: Subcategory) => {
+    fetchData();
+  }, [id]);
+
+  const handleSubmit = async () => {
     try {
       setLoading(true);
-      if (values.id) {
-        await updateSubcategory(values.id, values);
+      const data = { name, description, category: categoryId };
+      
+      if (id) {
+        await axios.put(`${API_URL}/subcategories/${id}`, data);
       } else {
-        await createSubcategory(values);
+        await axios.post(`${API_URL}/subcategories`, data);
       }
+      
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save subcategory');
+      Alert.alert('Error', 'Error al guardar la subcategoría');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading && (!initialValues.id || !categories.length)) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator animating={true} size="large" />
-      </View>
-    );
+  if (loadingData) {
+    return <ActivityIndicator style={styles.loader} animating={true} size="large" />;
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Formik
-        initialValues={initialValues}
-        validationSchema={SubcategorySchema}
-        onSubmit={handleSubmit}
-        enableReinitialize
+    <View style={styles.container}>
+      <TextInput
+        label="Nombre"
+        value={name}
+        onChangeText={setName}
+        style={styles.input}
+      />
+      
+      <TextInput
+        label="Descripción"
+        value={description}
+        onChangeText={setDescription}
+        multiline
+        style={styles.input}
+      />
+      
+      <Button
+        mode="contained"
+        onPress={handleSubmit}
+        loading={loading}
+        disabled={!name || !categoryId}
+        style={styles.button}
       >
-        {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
-          <View style={styles.form}>
-            <TextInput
-              label="Name"
-              mode="outlined"
-              onChangeText={handleChange('name')}
-              onBlur={handleBlur('name')}
-              value={values.name}
-              error={touched.name && !!errors.name}
-              style={styles.input}
-            />
-            {touched.name && errors.name && (
-              <Text style={styles.error}>{errors.name}</Text>
-            )}
-            
-            <TextInput
-              label="Description"
-              mode="outlined"
-              onChangeText={handleChange('description')}
-              onBlur={handleBlur('description')}
-              value={values.description || ''}
-              multiline
-              numberOfLines={3}
-              style={styles.input}
-            />
-            
-            <Picker
-              selectedValue={values.category}
-              onValueChange={(itemValue) => setFieldValue('category', itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select a category" value="" />
-              {categories.map(category => (
-                <Picker.Item 
-                  key={category.id} 
-                  label={category.name} 
-                  value={category.id} 
-                />
-              ))}
-            </Picker>
-            {touched.category && errors.category && (
-              <Text style={styles.error}>{errors.category}</Text>
-            )}
-            
-            <Button
-              mode="contained"
-              onPress={() => handleSubmit()}
-              loading={loading}
-              disabled={loading}
-              style={styles.button}
-            >
-              Save Subcategory
-            </Button>
-          </View>
-        )}
-      </Formik>
+        {id ? 'Actualizar' : 'Crear'} Subcategoría
+      </Button>
     </View>
   );
 };
@@ -156,26 +96,16 @@ const SubcategoryFormScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-  },
-  form: {
-    width: '100%',
+    padding: 16,
   },
   input: {
-    marginBottom: 10,
-  },
-  picker: {
-    marginBottom: 15,
-    backgroundColor: '#f5f5f5',
+    marginBottom: 16,
+    backgroundColor: 'white',
   },
   button: {
-    marginTop: 10,
+    marginTop: 16,
   },
-  error: {
-    color: 'red',
-    marginBottom: 10,
-  },
-  loaderContainer: {
+  loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

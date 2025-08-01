@@ -1,125 +1,104 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Button, Card, Title, useTheme, DataTable, ActivityIndicator } from 'react-native-paper';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { Button, DataTable, ActivityIndicator } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { getCategories, deleteCategory } from '../api/categories';
-import { Category } from '../api/categories';
+import axios from 'axios';
+import { API_URL } from '../constants/app';
 
-type CategoriesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Categories'>;
+// Define el tipo de categoría
+type Category = {
+  _id: string;
+  name: string;
+};
+
+
+type RootStackParamList = {
+  CategoryForm: { id?: string } | undefined;
+  // ...otros screens
+};
 
 const CategoriesScreen = () => {
-  const { user } = useAuth();
-  const navigation = useNavigation<CategoriesScreenNavigationProp>();
-  const { colors } = useTheme();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get<Category[]>(`${API_URL}/categories`);
+      setCategories(response.data);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar las categorías');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await getCategories();
-        setCategories(response.data);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to fetch categories');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchCategories();
   }, []);
 
   const handleDelete = async (id: string) => {
     try {
-      if (user?.role !== 'admin') {
-        Alert.alert('Error', 'Only admin can delete categories');
-        return;
-      }
-      
-      await deleteCategory(id);
-      setCategories(categories.filter(category => category.id !== id));
+      await axios.delete(`${API_URL}/categories/${id}`);
+      setCategories(categories.filter(cat => cat._id !== id));
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete category');
+      Alert.alert('Error', 'No se pudo eliminar la categoría');
     }
   };
 
   if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator animating={true} size="large" />
-      </View>
-    );
+    return <ActivityIndicator style={styles.loader} animating={true} size="large" />;
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>Categories Management</Title>
-          
-          <Button 
-            mode="contained" 
-            onPress={() => navigation.navigate('CategoryForm')}
-            style={styles.addButton}
-          >
-            Add Category
-          </Button>
-          
-          <DataTable>
-            <DataTable.Header>
-              <DataTable.Title>Name</DataTable.Title>
-              <DataTable.Title>Description</DataTable.Title>
-              <DataTable.Title>Actions</DataTable.Title>
-            </DataTable.Header>
-            
-            {categories.map(category => (
-              <DataTable.Row key={category.id}>
-                <DataTable.Cell>{category.name}</DataTable.Cell>
-                <DataTable.Cell>{category.description || '-'}</DataTable.Cell>
-                <DataTable.Cell>
-                  <Button 
-                    icon="pencil"
-                    onPress={() => navigation.navigate('CategoryForm', { id: category.id })}
-                    style={styles.actionButton}
-                  />
-                  {user?.role === 'admin' && (
-                    <Button 
-                      icon="delete"
-                      onPress={() => handleDelete(category.id)}
-                      style={styles.actionButton}
-                    />
-                  )}
-                </DataTable.Cell>
-              </DataTable.Row>
-            ))}
-          </DataTable>
-        </Card.Content>
-      </Card>
-    </ScrollView>
+    <View style={styles.container}>
+      <Button 
+        mode="contained" 
+        onPress={() => navigation.navigate('CategoryForm')}
+        style={styles.addButton}
+      >
+        Nueva Categoría
+      </Button>
+
+      <DataTable>
+        <DataTable.Header>
+          <DataTable.Title>Nombre</DataTable.Title>
+          <DataTable.Title>Acciones</DataTable.Title>
+        </DataTable.Header>
+
+        {categories.map(category => (
+          <DataTable.Row key={category._id}>
+            <DataTable.Cell>{category.name}</DataTable.Cell>
+            <DataTable.Cell style={{ flexDirection: 'row' }}>
+              <Button 
+                icon="pencil"
+                onPress={() => navigation.navigate('CategoryForm', { id: category._id })}
+                compact
+              >{''}</Button>
+              <Button 
+                icon="delete"
+                onPress={() => handleDelete(category._id)}
+                compact
+                color="red"
+              >{''}</Button>
+            </DataTable.Cell>
+          </DataTable.Row>
+        ))}
+      </DataTable>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
-  },
-  card: {
-    margin: 5,
-  },
-  title: {
-    marginBottom: 15,
+    padding: 16,
   },
   addButton: {
-    marginBottom: 15,
+    marginBottom: 16,
   },
-  actionButton: {
-    marginHorizontal: 2,
-  },
-  loaderContainer: {
+  loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

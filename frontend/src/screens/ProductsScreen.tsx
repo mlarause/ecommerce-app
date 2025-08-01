@@ -1,131 +1,90 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Button, Card, Title, useTheme, DataTable, ActivityIndicator } from 'react-native-paper';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { Button, DataTable, ActivityIndicator } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { getProducts, deleteProduct } from '../api/products';
-import { Product } from '../api/products';
-
-type ProductsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Products'>;
+import axios from 'axios';
+import { API_URL } from '../constants/app';
 
 const ProductsScreen = () => {
-  const { user } = useAuth();
-  const navigation = useNavigation<ProductsScreenNavigationProp>();
-  const { colors } = useTheme();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigation = useNavigation();
+
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/products`);
+      setProducts(response.data);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar los productos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await getProducts();
-        setProducts(response.data);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to fetch products');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchProducts();
   }, []);
 
   const handleDelete = async (id: string) => {
     try {
-      if (user?.role !== 'admin') {
-        Alert.alert('Error', 'Only admin can delete products');
-        return;
-      }
-      
-      await deleteProduct(id);
-      setProducts(products.filter(product => product.id !== id));
+      await axios.delete(`${API_URL}/products/${id}`);
+      setProducts(products.filter(prod => prod.id !== id));
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete product');
+      Alert.alert('Error', 'No se pudo eliminar el producto');
     }
   };
 
   if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator animating={true} size="large" />
-      </View>
-    );
+    return <ActivityIndicator style={styles.loader} animating={true} size="large" />;
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>Products Management</Title>
-          
-          <Button 
-            mode="contained" 
-            onPress={() => navigation.navigate('ProductForm')}
-            style={styles.addButton}
-          >
-            Add Product
-          </Button>
-          
-          <DataTable>
-            <DataTable.Header>
-              <DataTable.Title>Name</DataTable.Title>
-              <DataTable.Title>Description</DataTable.Title>
-              <DataTable.Title>Price</DataTable.Title>
-              <DataTable.Title>Category</DataTable.Title>
-              <DataTable.Title>Subcategory</DataTable.Title>
-              <DataTable.Title>Actions</DataTable.Title>
-            </DataTable.Header>
-            
-            {products.map(product => (
-              <DataTable.Row key={product.id}>
-                <DataTable.Cell>{product.name}</DataTable.Cell>
-                <DataTable.Cell>{product.description || '-'}</DataTable.Cell>
-                <DataTable.Cell>${product.price.toFixed(2)}</DataTable.Cell>
-                <DataTable.Cell>{product.category.name}</DataTable.Cell>
-                <DataTable.Cell>{product.subcategory.name}</DataTable.Cell>
-                <DataTable.Cell>
-                  <Button 
-                    icon="pencil"
-                    onPress={() => navigation.navigate('ProductForm', { id: product.id })}
-                    style={styles.actionButton}
-                  />
-                  {user?.role === 'admin' && (
-                    <Button 
-                      icon="delete"
-                      onPress={() => handleDelete(product.id)}
-                      style={styles.actionButton}
-                    />
-                  )}
-                </DataTable.Cell>
-              </DataTable.Row>
-            ))}
-          </DataTable>
-        </Card.Content>
-      </Card>
-    </ScrollView>
+    <View style={styles.container}>
+      <Button
+        mode="contained"
+        onPress={() => navigation.navigate('ProductForm')}
+        style={styles.addButton}
+      >
+        Nuevo Producto
+      </Button>
+
+      <DataTable>
+        <DataTable.Header>
+          <DataTable.Title>Nombre</DataTable.Title>
+          <DataTable.Title>Precio</DataTable.Title>
+          <DataTable.Title>Acciones</DataTable.Title>
+        </DataTable.Header>
+
+        {products.map(product => (
+          <DataTable.Row key={product.id}>
+            <DataTable.Cell>{product.name}</DataTable.Cell>
+            <DataTable.Cell>${product.price.toFixed(2)}</DataTable.Cell>
+            <DataTable.Cell>
+              <Button
+                icon="pencil"
+                onPress={() => navigation.navigate('ProductForm', { id: product.id })}
+              />
+              <Button
+                icon="delete"
+                onPress={() => handleDelete(product.id)}
+              />
+            </DataTable.Cell>
+          </DataTable.Row>
+        ))}
+      </DataTable>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
-  },
-  card: {
-    margin: 5,
-  },
-  title: {
-    marginBottom: 15,
+    padding: 16,
   },
   addButton: {
-    marginBottom: 15,
+    marginBottom: 16,
   },
-  actionButton: {
-    marginHorizontal: 2,
-  },
-  loaderContainer: {
+  loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

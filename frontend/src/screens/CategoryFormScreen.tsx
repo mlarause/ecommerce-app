@@ -1,121 +1,88 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Button, TextInput, Text, useTheme, ActivityIndicator } from 'react-native-paper';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { getCategory, createCategory, updateCategory } from '../api/categories';
-import { Category } from '../api/categories';
+import { Button, TextInput, ActivityIndicator } from 'react-native-paper';
+import { useNavigation, RouteProp, useRoute } from '@react-navigation/native';
+import axios from 'axios';
+import { API_URL } from '../constants/app';
 
-type CategoryFormScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CategoryForm'>;
-
-const CategorySchema = Yup.object().shape({
-  name: Yup.string().required('Required'),
-  description: Yup.string(),
-});
+type RootStackParamList = {
+  CategoryForm: { id?: string };
+};
 
 const CategoryFormScreen = () => {
-  const route = useRoute();
-  const navigation = useNavigation<CategoryFormScreenNavigationProp>();
-  const { colors } = useTheme();
-  const [initialValues, setInitialValues] = useState<Category>({
-    name: '',
-    description: '',
-  });
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
+  const navigation = useNavigation();
+  const route = useRoute<RouteProp<RootStackParamList, 'CategoryForm'>>();
+  const { id } = route.params || {};
 
   useEffect(() => {
-    const fetchCategory = async () => {
-      const { id } = route.params as { id?: string };
-      if (id) {
-        setLoading(true);
-        try {
-          const response = await getCategory(id);
-          setInitialValues(response.data);
-        } catch (error) {
-          Alert.alert('Error', 'Failed to fetch category');
-          navigation.goBack();
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    
-    fetchCategory();
-  }, [route.params]);
+    if (id) {
+      setLoadingData(true);
+      axios.get<{ name: string; description?: string }>(`${API_URL}/categories/${id}`)
+        .then(response => {
+          setName(response.data.name);
+          setDescription(response.data.description || '');
+          setLoadingData(false);
+        })
+        .catch(() => {
+          Alert.alert('Error', 'No se pudo cargar la categoría');
+          setLoadingData(false);
+        });
+    }
+  }, [id]);
 
-  const handleSubmit = async (values: Category) => {
+  const handleSubmit = async () => {
     try {
       setLoading(true);
-      if (values.id) {
-        await updateCategory(values.id, values);
+      const data = { name, description };
+      
+      if (id) {
+        await axios.put(`${API_URL}/categories/${id}`, data);
       } else {
-        await createCategory(values);
+        await axios.post(`${API_URL}/categories`, data);
       }
+      
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save category');
+      Alert.alert('Error', 'Error al guardar');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading && initialValues.id) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator animating={true} size="large" />
-      </View>
-    );
+  if (loadingData) {
+    return <ActivityIndicator style={styles.loader} animating={true} size="large" />;
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Formik
-        initialValues={initialValues}
-        validationSchema={CategorySchema}
-        onSubmit={handleSubmit}
-        enableReinitialize
+    <View style={styles.container}>
+      <TextInput
+        label="Nombre"
+        value={name}
+        onChangeText={setName}
+        style={styles.input}
+      />
+      
+      <TextInput
+        label="Descripción"
+        value={description}
+        onChangeText={setDescription}
+        multiline
+        style={styles.input}
+      />
+      
+      <Button
+        mode="contained"
+        onPress={handleSubmit}
+        loading={loading}
+        disabled={!name}
+        style={styles.button}
       >
-        {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
-          <View style={styles.form}>
-            <TextInput
-              label="Name"
-              mode="outlined"
-              onChangeText={handleChange('name')}
-              onBlur={handleBlur('name')}
-              value={values.name}
-              error={touched.name && !!errors.name}
-              style={styles.input}
-            />
-            {touched.name && errors.name && (
-              <Text style={styles.error}>{errors.name}</Text>
-            )}
-            
-            <TextInput
-              label="Description"
-              mode="outlined"
-              onChangeText={handleChange('description')}
-              onBlur={handleBlur('description')}
-              value={values.description || ''}
-              multiline
-              numberOfLines={3}
-              style={styles.input}
-            />
-            
-            <Button
-              mode="contained"
-              onPress={() => handleSubmit()}
-              loading={loading}
-              disabled={loading}
-              style={styles.button}
-            >
-              Save Category
-            </Button>
-          </View>
-        )}
-      </Formik>
+        {id ? 'Actualizar' : 'Crear'} Categoría
+      </Button>
     </View>
   );
 };
@@ -123,22 +90,16 @@ const CategoryFormScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-  },
-  form: {
-    width: '100%',
+    padding: 16,
   },
   input: {
-    marginBottom: 10,
+    marginBottom: 16,
+    backgroundColor: 'white',
   },
   button: {
-    marginTop: 10,
+    marginTop: 16,
   },
-  error: {
-    color: 'red',
-    marginBottom: 10,
-  },
-  loaderContainer: {
+  loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

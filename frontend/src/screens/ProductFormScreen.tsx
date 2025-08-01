@@ -1,206 +1,131 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Button, TextInput, Text, useTheme, ActivityIndicator, Picker } from 'react-native-paper';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
+import { Button, TextInput, ActivityIndicator } from 'react-native-paper';
+import axios from 'axios';
+import { API_URL } from '../constants/app';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { getProduct, createProduct, updateProduct } from '../api/products';
-import { getCategories, getSubcategoriesByCategory } from '../api/categories';
-import { Product, Category, Subcategory } from '../api/products';
-
-type ProductFormScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ProductForm'>;
-
-const ProductSchema = Yup.object().shape({
-  name: Yup.string().required('Required'),
-  description: Yup.string(),
-  price: Yup.number().required('Required').min(0, 'Price must be positive'),
-  category: Yup.string().required('Required'),
-  subcategory: Yup.string().required('Required'),
-});
 
 const ProductFormScreen = () => {
-  const route = useRoute();
-  const navigation = useNavigation<ProductFormScreenNavigationProp>();
-  const { colors } = useTheme();
-  const [initialValues, setInitialValues] = useState<Product>({
-    name: '',
-    description: '',
-    price: 0,
-    category: '',
-    subcategory: '',
-  });
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [subcategoryId, setSubcategoryId] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { id } = route.params as { id?: string };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch categories
-        const categoriesResponse = await getCategories();
-        setCategories(categoriesResponse.data);
-        
-        // Fetch product if editing
-        const { id } = route.params as { id?: string };
-        if (id) {
-          const response = await getProduct(id);
-          setInitialValues(response.data);
-          
-          // Fetch subcategories for the product's category
-          const subcategoriesResponse = await getSubcategoriesByCategory(response.data.category.id);
-          setSubcategories(subcategoriesResponse.data);
-        }
-      } catch (error) {
-        Alert.alert('Error', 'Failed to fetch data');
-        navigation.goBack();
-      } finally {
-        setLoading(false);
-      }
+    const fetchCategories = async () => {
+      const response = await axios.get(`${API_URL}/categories`);
+      setCategories(response.data);
     };
-    
-    fetchData();
-  }, [route.params]);
+    fetchCategories();
+  }, []);
 
-  const handleCategoryChange = async (categoryId: string, setFieldValue: any) => {
-    try {
-      setLoading(true);
-      setFieldValue('category', categoryId);
-      setFieldValue('subcategory', '');
-      
-      const response = await getSubcategoriesByCategory(categoryId);
-      setSubcategories(response.data);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to fetch subcategories');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (categoryId) {
+      const fetchSubcategories = async () => {
+        const response = await axios.get(`${API_URL}/subcategories/category/${categoryId}`);
+        setSubcategories(response.data);
+      };
+      fetchSubcategories();
     }
-  };
+  }, [categoryId]);
 
-  const handleSubmit = async (values: Product) => {
+  useEffect(() => {
+    if (id) {
+      const fetchProduct = async () => {
+        try {
+          const response = await axios.get(`${API_URL}/products/${id}`);
+          setName(response.data.name);
+          setDescription(response.data.description || '');
+          setPrice(response.data.price.toString());
+          setCategoryId(response.data.category.id);
+          setSubcategoryId(response.data.subcategory.id);
+          
+          // Cargar subcategorías para la categoría seleccionada
+          const subcatsResponse = await axios.get(`${API_URL}/subcategories/category/${response.data.category.id}`);
+          setSubcategories(subcatsResponse.data);
+        } catch (error) {
+          Alert.alert('Error', 'Error al cargar el producto');
+        } finally {
+          setLoadingData(false);
+        }
+      };
+      fetchProduct();
+    } else {
+      setLoadingData(false);
+    }
+  }, [id]);
+
+  const handleSubmit = async () => {
     try {
       setLoading(true);
-      if (values.id) {
-        await updateProduct(values.id, values);
+      const data = {
+        name,
+        description,
+        price: parseFloat(price),
+        category: categoryId,
+        subcategory: subcategoryId
+      };
+      
+      if (id) {
+        await axios.put(`${API_URL}/products/${id}`, data);
       } else {
-        await createProduct(values);
+        await axios.post(`${API_URL}/products`, data);
       }
+      
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save product');
+      Alert.alert('Error', 'Error al guardar el producto');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading && (!initialValues.id || !categories.length)) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator animating={true} size="large" />
-      </View>
-    );
+  if (loadingData) {
+    return <ActivityIndicator style={styles.loader} animating={true} size="large" />;
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Formik
-        initialValues={initialValues}
-        validationSchema={ProductSchema}
-        onSubmit={handleSubmit}
-        enableReinitialize
+    <View style={styles.container}>
+      <TextInput
+        label="Nombre del producto"
+        value={name}
+        onChangeText={setName}
+        style={styles.input}
+      />
+      
+      <TextInput
+        label="Descripción"
+        value={description}
+        onChangeText={setDescription}
+        multiline
+        style={styles.input}
+      />
+      
+      <TextInput
+        label="Precio"
+        value={price}
+        onChangeText={setPrice}
+        keyboardType="numeric"
+        style={styles.input}
+      />
+      
+      <Button
+        mode="contained"
+        onPress={handleSubmit}
+        loading={loading}
+        disabled={!name || !price || !categoryId || !subcategoryId}
+        style={styles.button}
       >
-        {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
-          <View style={styles.form}>
-            <TextInput
-              label="Name"
-              mode="outlined"
-              onChangeText={handleChange('name')}
-              onBlur={handleBlur('name')}
-              value={values.name}
-              error={touched.name && !!errors.name}
-              style={styles.input}
-            />
-            {touched.name && errors.name && (
-              <Text style={styles.error}>{errors.name}</Text>
-            )}
-            
-            <TextInput
-              label="Description"
-              mode="outlined"
-              onChangeText={handleChange('description')}
-              onBlur={handleBlur('description')}
-              value={values.description || ''}
-              multiline
-              numberOfLines={3}
-              style={styles.input}
-            />
-            
-            <TextInput
-              label="Price"
-              mode="outlined"
-              onChangeText={handleChange('price')}
-              onBlur={handleBlur('price')}
-              value={values.price.toString()}
-              error={touched.price && !!errors.price}
-              keyboardType="numeric"
-              style={styles.input}
-            />
-            {touched.price && errors.price && (
-              <Text style={styles.error}>{errors.price}</Text>
-            )}
-            
-            <Picker
-              selectedValue={values.category}
-              onValueChange={(itemValue) => handleCategoryChange(itemValue, setFieldValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select a category" value="" />
-              {categories.map(category => (
-                <Picker.Item 
-                  key={category.id} 
-                  label={category.name} 
-                  value={category.id} 
-                />
-              ))}
-            </Picker>
-            {touched.category && errors.category && (
-              <Text style={styles.error}>{errors.category}</Text>
-            )}
-            
-            <Picker
-              selectedValue={values.subcategory}
-              onValueChange={(itemValue) => setFieldValue('subcategory', itemValue)}
-              style={styles.picker}
-              enabled={!!values.category}
-            >
-              <Picker.Item label="Select a subcategory" value="" />
-              {subcategories.map(subcategory => (
-                <Picker.Item 
-                  key={subcategory.id} 
-                  label={subcategory.name} 
-                  value={subcategory.id} 
-                />
-              ))}
-            </Picker>
-            {touched.subcategory && errors.subcategory && (
-              <Text style={styles.error}>{errors.subcategory}</Text>
-            )}
-            
-            <Button
-              mode="contained"
-              onPress={() => handleSubmit()}
-              loading={loading}
-              disabled={loading}
-              style={styles.button}
-            >
-              Save Product
-            </Button>
-          </View>
-        )}
-      </Formik>
+        {id ? 'Actualizar' : 'Crear'} Producto
+      </Button>
     </View>
   );
 };
@@ -208,26 +133,16 @@ const ProductFormScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-  },
-  form: {
-    width: '100%',
+    padding: 16,
   },
   input: {
-    marginBottom: 10,
-  },
-  picker: {
-    marginBottom: 15,
-    backgroundColor: '#f5f5f5',
+    marginBottom: 16,
+    backgroundColor: 'white',
   },
   button: {
-    marginTop: 10,
+    marginTop: 16,
   },
-  error: {
-    color: 'red',
-    marginBottom: 10,
-  },
-  loaderContainer: {
+  loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

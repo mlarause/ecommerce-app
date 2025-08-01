@@ -1,139 +1,98 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Button, Card, Title, useTheme, DataTable, ActivityIndicator } from 'react-native-paper';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { Button, DataTable, ActivityIndicator } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { getSubcategories, getSubcategoriesByCategory, deleteSubcategory } from '../api/subcategories';
-import { Subcategory } from '../api/subcategories';
-
-type SubcategoriesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Subcategories'>;
+import axios from 'axios';
+import { API_URL } from '../constants/app';
 
 const SubcategoriesScreen = () => {
-  const { user } = useAuth();
-  const navigation = useNavigation<SubcategoriesScreenNavigationProp>();
-  const route = useRoute();
-  const { colors } = useTheme();
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { categoryId } = route.params as { categoryId?: string };
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { categoryId } = route.params || {};
+
+  const fetchSubcategories = async () => {
+    try {
+      const url = categoryId 
+        ? `${API_URL}/subcategories/category/${categoryId}`
+        : `${API_URL}/subcategories`;
+      const response = await axios.get(url);
+      setSubcategories(response.data);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar las subcategorías');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchSubcategories = async () => {
-      try {
-        let response;
-        if (categoryId) {
-          response = await getSubcategoriesByCategory(categoryId);
-        } else {
-          response = await getSubcategories();
-        }
-        setSubcategories(response.data);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to fetch subcategories');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchSubcategories();
   }, [categoryId]);
 
   const handleDelete = async (id: string) => {
     try {
-      if (user?.role !== 'admin') {
-        Alert.alert('Error', 'Only admin can delete subcategories');
-        return;
-      }
-      
-      await deleteSubcategory(id);
-      setSubcategories(subcategories.filter(subcategory => subcategory.id !== id));
+      await axios.delete(`${API_URL}/subcategories/${id}`);
+      setSubcategories(subcategories.filter(sub => sub.id !== id));
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete subcategory');
+      Alert.alert('Error', 'No se pudo eliminar la subcategoría');
     }
   };
 
   if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator animating={true} size="large" />
-      </View>
-    );
+    return <ActivityIndicator style={styles.loader} animating={true} size="large" />;
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>
-            {categoryId ? 'Subcategories by Category' : 'All Subcategories'}
-          </Title>
-          
-          <Button 
-            mode="contained" 
-            onPress={() => navigation.navigate('SubcategoryForm', { categoryId })}
-            style={styles.addButton}
-          >
-            Add Subcategory
-          </Button>
-          
-          <DataTable>
-            <DataTable.Header>
-              <DataTable.Title>Name</DataTable.Title>
-              <DataTable.Title>Description</DataTable.Title>
-              <DataTable.Title>Category</DataTable.Title>
-              <DataTable.Title>Actions</DataTable.Title>
-            </DataTable.Header>
-            
-            {subcategories.map(subcategory => (
-              <DataTable.Row key={subcategory.id}>
-                <DataTable.Cell>{subcategory.name}</DataTable.Cell>
-                <DataTable.Cell>{subcategory.description || '-'}</DataTable.Cell>
-                <DataTable.Cell>{subcategory.category.name}</DataTable.Cell>
-                <DataTable.Cell>
-                  <Button 
-                    icon="pencil"
-                    onPress={() => navigation.navigate('SubcategoryForm', { 
-                      id: subcategory.id,
-                      categoryId: subcategory.category.id
-                    })}
-                    style={styles.actionButton}
-                  />
-                  {user?.role === 'admin' && (
-                    <Button 
-                      icon="delete"
-                      onPress={() => handleDelete(subcategory.id)}
-                      style={styles.actionButton}
-                    />
-                  )}
-                </DataTable.Cell>
-              </DataTable.Row>
-            ))}
-          </DataTable>
-        </Card.Content>
-      </Card>
-    </ScrollView>
+    <View style={styles.container}>
+      <Button
+        mode="contained"
+        onPress={() => navigation.navigate('SubcategoryForm', { categoryId })}
+        style={styles.addButton}
+      >
+        Nueva Subcategoría
+      </Button>
+
+      <DataTable>
+        <DataTable.Header>
+          <DataTable.Title>Nombre</DataTable.Title>
+          <DataTable.Title>Categoría</DataTable.Title>
+          <DataTable.Title>Acciones</DataTable.Title>
+        </DataTable.Header>
+
+        {subcategories.map(subcategory => (
+          <DataTable.Row key={subcategory.id}>
+            <DataTable.Cell>{subcategory.name}</DataTable.Cell>
+            <DataTable.Cell>{subcategory.category?.name || '-'}</DataTable.Cell>
+            <DataTable.Cell>
+              <Button
+                icon="pencil"
+                onPress={() => navigation.navigate('SubcategoryForm', { 
+                  id: subcategory.id,
+                  categoryId: subcategory.category?.id
+                })}
+              />
+              <Button
+                icon="delete"
+                onPress={() => handleDelete(subcategory.id)}
+              />
+            </DataTable.Cell>
+          </DataTable.Row>
+        ))}
+      </DataTable>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
-  },
-  card: {
-    margin: 5,
-  },
-  title: {
-    marginBottom: 15,
+    padding: 16,
   },
   addButton: {
-    marginBottom: 15,
+    marginBottom: 16,
   },
-  actionButton: {
-    marginHorizontal: 2,
-  },
-  loaderContainer: {
+  loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
