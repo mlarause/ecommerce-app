@@ -51,7 +51,7 @@ const ProductsScreen = () => {
     <View style={styles.container}>
       <Button
         mode="contained"
-        onPress={() => navigation.navigate('ProductForm')}
+        onPress={() => navigation.navigate({ name: 'ProductForm', params: { id: undefined } })}
         style={styles.addButton}
       >
         Nuevo Producto

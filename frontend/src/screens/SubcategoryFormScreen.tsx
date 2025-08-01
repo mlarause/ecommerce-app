@@ -5,11 +5,16 @@ import axios from 'axios';
 import { API_URL } from '../constants/app';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
+type Category = {
+  id: string;
+  name: string;
+};
+
 const SubcategoryFormScreen = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const navigation = useNavigation();
@@ -20,12 +25,12 @@ const SubcategoryFormScreen = () => {
     const fetchData = async () => {
       try {
         // Obtener categorías
-        const categoriesResponse = await axios.get(`${API_URL}/categories`);
+        const categoriesResponse = await axios.get<Category[]>(`${API_URL}/categories`);
         setCategories(categoriesResponse.data);
 
         // Si estamos editando, cargar los datos de la subcategoría
         if (id) {
-          const response = await axios.get(`${API_URL}/subcategories/${id}`);
+          const response = await axios.get<{ name: string; description?: string; category: { id: string } }>(`${API_URL}/subcategories/${id}`);
           setName(response.data.name);
           setDescription(response.data.description || '');
           setCategoryId(response.data.category.id);

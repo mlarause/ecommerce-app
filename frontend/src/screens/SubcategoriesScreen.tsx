@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { Button, DataTable, ActivityIndicator } from 'react-native-paper';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, RouteProp, useRoute } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import axios from 'axios';
 import { API_URL } from '../constants/app';
+import { RootStackParamList } from '../navigation';
+
+type Subcategory = {
+  id: string;
+  name: string;
+  category?: { id: string; name: string };
+};
 
 const SubcategoriesScreen = () => {
-  const [subcategories, setSubcategories] = useState([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigation = useNavigation();
-  const route = useRoute();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Subcategories'>>();
   const { categoryId } = route.params || {};
 
   const fetchSubcategories = async () => {
@@ -17,7 +25,7 @@ const SubcategoriesScreen = () => {
       const url = categoryId 
         ? `${API_URL}/subcategories/category/${categoryId}`
         : `${API_URL}/subcategories`;
-      const response = await axios.get(url);
+      const response = await axios.get<Subcategory[]>(url);
       setSubcategories(response.data);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar las subcategorías');
@@ -71,11 +79,11 @@ const SubcategoriesScreen = () => {
                   id: subcategory.id,
                   categoryId: subcategory.category?.id
                 })}
-              />
+              >{''}</Button>
               <Button
                 icon="delete"
                 onPress={() => handleDelete(subcategory.id)}
-              />
+              >{''}</Button>
             </DataTable.Cell>
           </DataTable.Row>
         ))}
