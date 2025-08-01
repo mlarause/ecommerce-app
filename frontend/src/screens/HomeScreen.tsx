@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -27,7 +26,6 @@ const HomeScreen = () => {
               mode="contained" 
               onPress={() => navigation.navigate('Users')}
               style={styles.button}
-              icon={() => <Icon name="account-group" size={20} color="white" />}
               contentStyle={styles.buttonContent}
             >
               Ver Usuarios
@@ -40,7 +38,6 @@ const HomeScreen = () => {
               mode="contained" 
               onPress={() => navigation.navigate('Categories')}
               style={styles.button}
-              icon={() => <Icon name="shape-outline" size={20} color="white" />}
               contentStyle={styles.buttonContent}
             >
               Ver Categorías
@@ -51,9 +48,8 @@ const HomeScreen = () => {
             <Title style={styles.sectionTitle}>Gestión de Subcategorías</Title>
             <Button 
               mode="contained" 
-              onPress={() => navigation.navigate('Subcategories')}
+              onPress={() => navigation.navigate('Subcategories', {})}
               style={styles.button}
-              icon={() => <Icon name="shape-plus" size={20} color="white" />}
               contentStyle={styles.buttonContent}
             >
               Ver Subcategorías
@@ -66,7 +62,6 @@ const HomeScreen = () => {
               mode="contained" 
               onPress={() => navigation.navigate('Products')}
               style={styles.button}
-              icon={() => <Icon name="package-variant" size={20} color="white" />}
               contentStyle={styles.buttonContent}
             >
               Ver Productos
@@ -77,7 +72,6 @@ const HomeScreen = () => {
             mode="outlined" 
             onPress={logout}
             style={styles.logoutButton}
-            icon={() => <Icon name="logout" size={20} color={colors.error} />}
             contentStyle={styles.buttonContent}
             labelStyle={{ color: colors.error }}
           >

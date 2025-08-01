@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { Button, DataTable, ActivityIndicator } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { RootStackParamList } from '../navigation';
 import axios from 'axios';
 import { API_URL } from '../constants/app';
 
+// Define el tipo de producto
+type Product = {
+  _id: string;
+  name: string;
+  price: number;
+};
+
 const ProductsScreen = () => {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigation = useNavigation();
+
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${API_URL}/products`);
+      const response = await axios.get<Product[]>(`${API_URL}/products`);
       setProducts(response.data);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar los productos');
@@ -28,7 +37,7 @@ const ProductsScreen = () => {
   const handleDelete = async (id: string) => {
     try {
       await axios.delete(`${API_URL}/products/${id}`);
-      setProducts(products.filter(prod => prod.id !== id));
+      setProducts(products.filter(prod => prod._id !== id));
     } catch (error) {
       Alert.alert('Error', 'No se pudo eliminar el producto');
     }
@@ -56,18 +65,21 @@ const ProductsScreen = () => {
         </DataTable.Header>
 
         {products.map(product => (
-          <DataTable.Row key={product.id}>
+          <DataTable.Row key={product._id}>
             <DataTable.Cell>{product.name}</DataTable.Cell>
             <DataTable.Cell>${product.price.toFixed(2)}</DataTable.Cell>
-            <DataTable.Cell>
+            <DataTable.Cell style={{ flexDirection: 'row' }}>
               <Button
                 icon="pencil"
-                onPress={() => navigation.navigate('ProductForm', { id: product.id })}
-              />
+                onPress={() => navigation.navigate('ProductForm', { id: product._id })}
+                compact
+              >{''}</Button>
               <Button
                 icon="delete"
-                onPress={() => handleDelete(product.id)}
-              />
+                onPress={() => handleDelete(product._id)}
+                compact
+                color="red"
+              >{''}</Button>
             </DataTable.Cell>
           </DataTable.Row>
         ))}

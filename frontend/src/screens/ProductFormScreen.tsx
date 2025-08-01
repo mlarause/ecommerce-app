@@ -5,14 +5,24 @@ import axios from 'axios';
 import { API_URL } from '../constants/app';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
+type Category = {
+  _id: string;
+  name: string;
+};
+
+type Subcategory = {
+  _id: string;
+  name: string;
+};
+
 const ProductFormScreen = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const navigation = useNavigation();
@@ -21,7 +31,7 @@ const ProductFormScreen = () => {
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const response = await axios.get(`${API_URL}/categories`);
+      const response = await axios.get<Category[]>(`${API_URL}/categories`);
       setCategories(response.data);
     };
     fetchCategories();
@@ -30,7 +40,7 @@ const ProductFormScreen = () => {
   useEffect(() => {
     if (categoryId) {
       const fetchSubcategories = async () => {
-        const response = await axios.get(`${API_URL}/subcategories/category/${categoryId}`);
+        const response = await axios.get<Subcategory[]>(`${API_URL}/subcategories/category/${categoryId}`);
         setSubcategories(response.data);
       };
       fetchSubcategories();
@@ -41,15 +51,21 @@ const ProductFormScreen = () => {
     if (id) {
       const fetchProduct = async () => {
         try {
-          const response = await axios.get(`${API_URL}/products/${id}`);
+          const response = await axios.get<{
+            name: string;
+            description?: string;
+            price: number;
+            category: { id: string };
+            subcategory: { id: string };
+          }>(`${API_URL}/products/${id}`);
           setName(response.data.name);
           setDescription(response.data.description || '');
           setPrice(response.data.price.toString());
           setCategoryId(response.data.category.id);
           setSubcategoryId(response.data.subcategory.id);
-          
+
           // Cargar subcategorías para la categoría seleccionada
-          const subcatsResponse = await axios.get(`${API_URL}/subcategories/category/${response.data.category.id}`);
+          const subcatsResponse = await axios.get<Subcategory[]>(`${API_URL}/subcategories/category/${response.data.category.id}`);
           setSubcategories(subcatsResponse.data);
         } catch (error) {
           Alert.alert('Error', 'Error al cargar el producto');
