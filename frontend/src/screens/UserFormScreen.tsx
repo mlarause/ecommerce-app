@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Button, TextInput, Text, useTheme } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -11,13 +12,26 @@ import { User } from '../api/users';
 
 type UserFormScreenNavigationProp = StackNavigationProp<RootStackParamList, 'UserForm'>;
 
+interface UserResponse {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "coordinator"; // Cambiar de string a tipo literal unión
+}
+
 const UserSchema = Yup.object().shape({
   name: Yup.string().required('Required'),
   email: Yup.string().email('Invalid email').required('Required'),
-  password: Yup.string().when('id', {
-    is: undefined,
-    then: Yup.string().required('Required'),
-    otherwise: Yup.string(),
+  password: Yup.string().test({
+    name: 'password-required-when-new',
+    test: function(value, context) {
+      // Si no hay ID (usuario nuevo) y no hay contraseña, falla la validación
+      if (!context.parent.id && !value) {
+        return false;
+      }
+      return true;
+    },
+    message: 'Required'
   }),
   role: Yup.string().required('Required'),
 });
@@ -41,11 +55,12 @@ const UserFormScreen = () => {
         setLoading(true);
         try {
           const response = await getUser(id);
+          const userData = response.data as UserResponse;
           setInitialValues({
-            id: response.data.id,
-            name: response.data.name,
-            email: response.data.email,
-            role: response.data.role,
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            role: userData.role,
             password: '',
           });
         } catch (error) {

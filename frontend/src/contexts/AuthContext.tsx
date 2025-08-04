@@ -2,7 +2,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '../types';
 import { login as apiLogin, getCurrentUser as apiGetCurrentUser } from '../api/auth';
-import { useNavigate } from 'react-router-dom';
+import { storeToken, getToken, removeToken } from '../utils/auth';
+import { api } from '../api/client';
 
 interface AuthContextType {
   user: User | null;
@@ -18,18 +19,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('token');
+      const storedToken = await getToken();
       if (storedToken) {
         try {
           const userData = await apiGetCurrentUser();
           setUser(userData);
           setToken(storedToken);
         } catch (error) {
-          localStorage.removeItem('token');
+          await removeToken();
         }
       }
       setLoading(false);
@@ -40,21 +40,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const handleLogin = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const { token: newToken, user: userData } = await apiLogin({ email, password });
-      localStorage.setItem('token', newToken);
+      console.log("Intentando login con:", email);
+      const response = await api.post('/auth/login', { email, password });
+      console.log("Respuesta:", response.data);
+      
+      const { token: newToken, user: userData } = response.data;
+      await storeToken(newToken);
       setUser(userData);
       setToken(newToken);
-      navigate('/');
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    removeToken();
     setUser(null);
     setToken(null);
-    navigate('/login');
   };
 
   return (

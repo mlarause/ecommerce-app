@@ -13,14 +13,14 @@ import ProductFormScreen from '../screens/ProductFormScreen';
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
-  Users: undefined;
-  UserForm: { id?: string };
+  Products: undefined;
+  ProductForm: { id?: string };
   Categories: undefined;
   CategoryForm: { id?: string };
   Subcategories: { categoryId?: string };
   SubcategoryForm: { id?: string; categoryId?: string };
-  Products: undefined;
-  ProductForm: { id?: string };
+  Users: undefined;
+  UserForm: { id?: string };  // Asegúrate que esta línea exista
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

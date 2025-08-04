@@ -1,34 +1,64 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import * as bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
+// Extender la interfaz Request de Express para incluir user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        role: string;
+      };
+    }
+  }
+}
 
+// Tipo para peticiones autenticadas 
 export interface AuthenticatedRequest extends Request {
-  user?: {
+  user: {
     id: string;
+    email: string;
     role: string;
   };
 }
 
-export const auth = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  
-  if (!token) {
-    return res.status(401).json({ message: 'No token, authorization denied' });
-  }
-  
+// Middleware de autenticación
+export const auth = (req: Request, res: Response, next: NextFunction) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
-    req.user = decoded;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No autorizado, token no proporcionado' });
+    }
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    req.user = decoded as { id: string; email: string; role: string };
+    
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token is not valid' });
+    res.status(401).json({ message: 'No autorizado, token inválido' });
   }
 };
 
-export const adminOnly = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ message: 'Admin access required' });
+// Middleware para roles específicos
+export const adminOnly = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Acceso denegado: solo para administradores' });
   }
   next();
+};
+
+// Middleware para asegurar la conversión de tipo
+export const withAuthUser = (handler: (req: AuthenticatedRequest, res: Response, next?: NextFunction) => any) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // En este punto, auth ya ha añadido req.user, podemos hacer la conversión de tipo
+    if (!req.user) {
+      return res.status(401).json({ message: 'No autorizado' });
+    }
+    
+    // El handler recibe req como AuthenticatedRequest
+    return handler(req as AuthenticatedRequest, res, next);
+  };
 };

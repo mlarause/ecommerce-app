@@ -1,103 +1,110 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Button, Card, Title, useTheme, DataTable, ActivityIndicator } from 'react-native-paper';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert, FlatList } from 'react-native';
+import { Card, Title, Paragraph, Button, ActivityIndicator } from 'react-native-paper';
+import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { getUsers, deleteUser } from '../api/users';
-import { User } from '../api/users';
+import { RootStackParamList } from '../navigation';
+import { API_URL } from '../constants/app';
+import { useAuth } from '../contexts/AuthContext';
+
+// Tipo para Users
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "coordinator";
+}
 
 type UsersScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Users'>;
 
 const UsersScreen = () => {
-  const { user: currentUser } = useAuth();
-  const navigation = useNavigation<UsersScreenNavigationProp>();
-  const { colors } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigation = useNavigation<UsersScreenNavigationProp>();
+  const { user: currentUser } = useAuth();
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get<User[]>(`${API_URL}/users`);
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      Alert.alert('Error', 'No se pudieron cargar los usuarios');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await getUsers();
-        setUsers(response.data);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to fetch users');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchUsers();
   }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     try {
-      await deleteUser(id);
+      await axios.delete(`${API_URL}/users/${id}`);
       setUsers(users.filter(user => user.id !== id));
+      Alert.alert('Success', 'Usuario eliminado exitosamente');
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete user');
+      console.error('Error deleting user:', error);
+      Alert.alert('Error', 'No se pudo eliminar el usuario');
     }
   };
 
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator animating={true} size="large" />
+        <ActivityIndicator size="large" />
       </View>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>Users Management</Title>
-          
-          {currentUser?.role === 'admin' && (
-            <Button 
-              mode="contained" 
-              onPress={() => navigation.navigate('UserForm')}
-              style={styles.addButton}
-            >
-              Add User
-            </Button>
-          )}
-          
-          <DataTable>
-            <DataTable.Header>
-              <DataTable.Title>Name</DataTable.Title>
-              <DataTable.Title>Email</DataTable.Title>
-              <DataTable.Title>Role</DataTable.Title>
-              {currentUser?.role === 'admin' && <DataTable.Title>Actions</DataTable.Title>}
-            </DataTable.Header>
-            
-            {users.map(user => (
-              <DataTable.Row key={user.id}>
-                <DataTable.Cell>{user.name}</DataTable.Cell>
-                <DataTable.Cell>{user.email}</DataTable.Cell>
-                <DataTable.Cell>{user.role}</DataTable.Cell>
-                {currentUser?.role === 'admin' && (
-                  <DataTable.Cell>
-                    <Button 
-                      icon="pencil"
-                      onPress={() => navigation.navigate('UserForm', { id: user.id })}
-                      style={styles.actionButton}
-                    />
-                    <Button 
-                      icon="delete"
-                      onPress={() => handleDelete(user.id)}
-                      style={styles.actionButton}
-                    />
-                  </DataTable.Cell>
-                )}
-              </DataTable.Row>
-            ))}
-          </DataTable>
-        </Card.Content>
-      </Card>
-    </ScrollView>
+    <View style={styles.container}>
+      <Button
+        mode="contained"
+        onPress={() => navigation.navigate({
+          name: 'UserForm',
+          params: {}  // Objeto vacío en lugar de undefined
+        })}
+        style={styles.addButton}
+      >
+        Agregar Usuario
+      </Button>
+
+      <FlatList
+        data={users}
+        keyExtractor={item => item.id}
+        renderItem={({ item: user }) => (
+          <Card style={styles.card}>
+            <Card.Content>
+              <Title>{user.name}</Title>
+              <Paragraph>Email: {user.email}</Paragraph>
+              <Paragraph>Rol: {user.role}</Paragraph>
+              
+              {currentUser && currentUser.role === 'admin' && (
+                <View style={{ flexDirection: 'row', marginTop: 10 }}>
+                  <Button
+                    icon="pencil"
+                    onPress={() => navigation.navigate({
+                      name: 'UserForm',
+                      params: { id: user.id }
+                    })}
+                    style={styles.actionButton}
+                  >{''}</Button>
+                  
+                  <Button
+                    icon="delete"
+                    onPress={() => handleDeleteUser(user.id)}
+                    style={styles.actionButton}
+                  >{''}</Button>
+                </View>
+              )}
+            </Card.Content>
+          </Card>
+        )}
+      />
+    </View>
   );
 };
 

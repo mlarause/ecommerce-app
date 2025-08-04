@@ -42,7 +42,7 @@ export const updateCategory = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteCategory = async (req: AuthenticatedRequest, res: Response) => {
+export const deleteCategory = async (req: Request, res: Response) => {
   try {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Only admin can delete categories' });

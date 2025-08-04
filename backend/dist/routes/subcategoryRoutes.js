@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const subcategoryController_1 = require("../controllers/subcategoryController");
+const auth_1 = require("../middlewares/auth");
+const router = (0, express_1.Router)();
+router.get('/', subcategoryController_1.getSubcategories);
+router.get('/category/:categoryId', subcategoryController_1.getSubcategoriesByCategory);
+router.post('/', auth_1.auth, subcategoryController_1.createSubcategory);
+router.put('/:id', auth_1.auth, subcategoryController_1.updateSubcategory);
+router.delete('/:id', auth_1.auth, auth_1.adminOnly, subcategoryController_1.deleteSubcategory);
+exports.default = router;
