@@ -5,6 +5,7 @@ import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { API_URL } from '../constants/app'; // ← Agrega esta línea
 
 const LoginSchema = Yup.object().shape({
   email: Yup.string().email('Invalid email').required('Required'),
@@ -36,45 +37,96 @@ const LoginScreen = () => {
         validationSchema={LoginSchema}
         onSubmit={handleLogin}
       >
-        {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+        {(props) => (
           <View style={styles.form}>
             <TextInput
               label="Email"
               mode="outlined"
-              onChangeText={handleChange('email')}
-              onBlur={handleBlur('email')}
-              value={values.email}
-              error={touched.email && !!errors.email}
+              onChangeText={props.handleChange('email')}
+              onBlur={props.handleBlur('email')}
+              value={props.values.email}
+              error={props.touched.email && !!props.errors.email}
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
             />
-            {touched.email && errors.email && (
-              <Text style={styles.error}>{errors.email}</Text>
+            {props.touched.email && props.errors.email && (
+              <Text style={styles.error}>{props.errors.email}</Text>
             )}
             
             <TextInput
               label="Password"
               mode="outlined"
-              onChangeText={handleChange('password')}
-              onBlur={handleBlur('password')}
-              value={values.password}
-              error={touched.password && !!errors.password}
+              onChangeText={props.handleChange('password')}
+              onBlur={props.handleBlur('password')}
+              value={props.values.password}
+              error={props.touched.password && !!props.errors.password}
               secureTextEntry
               style={styles.input}
             />
-            {touched.password && errors.password && (
-              <Text style={styles.error}>{errors.password}</Text>
+            {props.touched.password && props.errors.password && (
+              <Text style={styles.error}>{props.errors.password}</Text>
             )}
             
             <Button
               mode="contained"
-              onPress={() => handleSubmit()}
+              onPress={() => props.handleSubmit()}
               loading={loading}
               disabled={loading}
               style={styles.button}
             >
               Login
+            </Button>
+            <Button 
+              mode="contained"
+              onPress={async () => {
+                try {
+                  console.log("Usando API URL:", API_URL);
+                  const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      email: 'admin@example.com', 
+                      password: 'admin123' 
+                    })
+                  });
+                  console.log("Status:", response.status);
+                  const data = await response.text();
+                  console.log("Respuesta:", data);
+                } catch (error) {
+                  console.error("Error:", error);
+                }
+              }}
+              style={styles.button}
+            >
+              Prueba Directa
+            </Button>
+            <Button 
+              mode="outlined" 
+              style={{ marginTop: 10 }}
+              onPress={async () => {
+                try {
+                  const testUrl = 'http://192.168.0.123:5000/api/auth/login'; // Usa tu IP real
+                  console.log("Probando URL:", testUrl);
+                  
+                  const response = await fetch(testUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      email: 'admin@example.com', 
+                      password: 'admin123' 
+                    })
+                  });
+                  
+                  console.log("Status:", response.status);
+                  const data = await response.json();
+                  console.log("Respuesta:", data);
+                } catch (error) {
+                  console.error("Error de conexión:", error);
+                }
+              }}
+            >
+              Prueba Conexión Directa
             </Button>
           </View>
         )}

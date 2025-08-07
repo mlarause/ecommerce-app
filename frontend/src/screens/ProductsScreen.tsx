@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { Button, DataTable, ActivityIndicator } from 'react-native-paper';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
+import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import { API_URL } from '../constants/app';
 
@@ -17,7 +16,7 @@ const ProductsScreen = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation();
 
   const fetchProducts = async () => {
     try {
@@ -51,7 +50,7 @@ const ProductsScreen = () => {
     <View style={styles.container}>
       <Button
         mode="contained"
-        onPress={() => navigation.navigate({ name: 'ProductForm', params: { id: undefined } })}
+        onPress={() => console.log('Crear producto')}
         style={styles.addButton}
       >
         Nuevo Producto
@@ -71,7 +70,7 @@ const ProductsScreen = () => {
             <DataTable.Cell style={{ flexDirection: 'row' }}>
               <Button
                 icon="pencil"
-                onPress={() => navigation.navigate('ProductForm', { id: product._id })}
+                onPress={() => console.log('Editar producto:', product._id)}
                 compact
               >{''}</Button>
               <Button

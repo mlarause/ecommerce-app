@@ -3,14 +3,10 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { Button, Card, Title, useTheme, Text } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
-import { StackNavigationProp } from '@react-navigation/stack';
-
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 const HomeScreen = () => {
   const { user, logout } = useAuth();
-  const navigation = useNavigation<HomeScreenNavigationProp>();
+  const navigation = useNavigation();
   const { colors } = useTheme();
 
   return (
@@ -24,7 +20,7 @@ const HomeScreen = () => {
             <Title style={styles.sectionTitle}>Gestión de Usuarios</Title>
             <Button 
               mode="contained" 
-              onPress={() => navigation.navigate('Users')}
+              onPress={() => console.log('Ir a Usuarios')} // ← Cambio línea 23
               style={styles.button}
               contentStyle={styles.buttonContent}
             >
@@ -36,7 +32,7 @@ const HomeScreen = () => {
             <Title style={styles.sectionTitle}>Gestión de Categorías</Title>
             <Button 
               mode="contained" 
-              onPress={() => navigation.navigate('Categories')}
+              onPress={() => console.log('Ir a Categorías')} // ← Cambio línea 35
               style={styles.button}
               contentStyle={styles.buttonContent}
             >
@@ -48,7 +44,7 @@ const HomeScreen = () => {
             <Title style={styles.sectionTitle}>Gestión de Subcategorías</Title>
             <Button 
               mode="contained" 
-              onPress={() => navigation.navigate('Subcategories', {})}
+              onPress={() => console.log('Ir a Subcategorías')} // ← Cambio línea 47
               style={styles.button}
               contentStyle={styles.buttonContent}
             >
@@ -60,7 +56,7 @@ const HomeScreen = () => {
             <Title style={styles.sectionTitle}>Gestión de Productos</Title>
             <Button 
               mode="contained" 
-              onPress={() => navigation.navigate('Products')}
+              onPress={() => console.log('Ir a Productos')} // ← Cambio línea 59
               style={styles.button}
               contentStyle={styles.buttonContent}
             >

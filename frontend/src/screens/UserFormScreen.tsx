@@ -5,18 +5,14 @@ import { Picker } from '@react-native-picker/picker';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
-import { StackNavigationProp } from '@react-navigation/stack';
 import { getUser, createUser, updateUser } from '../api/users';
 import { User } from '../api/users';
-
-type UserFormScreenNavigationProp = StackNavigationProp<RootStackParamList, 'UserForm'>;
 
 interface UserResponse {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "coordinator"; // Cambiar de string a tipo literal unión
+  role: "admin" | "coordinator";
 }
 
 const UserSchema = Yup.object().shape({
@@ -38,7 +34,7 @@ const UserSchema = Yup.object().shape({
 
 const UserFormScreen = () => {
   const route = useRoute();
-  const navigation = useNavigation<UserFormScreenNavigationProp>();
+  const navigation = useNavigation();
   const { colors } = useTheme();
   const [initialValues, setInitialValues] = useState<Omit<User, 'id'> & { id?: string, password?: string }>({
     name: '',

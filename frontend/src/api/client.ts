@@ -28,4 +28,9 @@ api.interceptors.response.use(
   }
 );
 
+export const getCurrentUser = async () => {
+  const response = await api.get('/auth/me');
+  return response.data;
+};
+
 export default api;

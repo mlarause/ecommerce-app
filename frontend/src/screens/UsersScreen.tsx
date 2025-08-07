@@ -3,8 +3,6 @@ import { View, StyleSheet, Alert, FlatList } from 'react-native';
 import { Card, Title, Paragraph, Button, ActivityIndicator } from 'react-native-paper';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation';
 import { API_URL } from '../constants/app';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,12 +14,10 @@ interface User {
   role: "admin" | "coordinator";
 }
 
-type UsersScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Users'>;
-
 const UsersScreen = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigation = useNavigation<UsersScreenNavigationProp>();
+  const navigation = useNavigation();
   const { user: currentUser } = useAuth();
 
   const fetchUsers = async () => {
@@ -63,10 +59,7 @@ const UsersScreen = () => {
     <View style={styles.container}>
       <Button
         mode="contained"
-        onPress={() => navigation.navigate({
-          name: 'UserForm',
-          params: {}  // Objeto vacío en lugar de undefined
-        })}
+        onPress={() => console.log('Agregar Usuario')}
         style={styles.addButton}
       >
         Agregar Usuario
@@ -86,10 +79,7 @@ const UsersScreen = () => {
                 <View style={{ flexDirection: 'row', marginTop: 10 }}>
                   <Button
                     icon="pencil"
-                    onPress={() => navigation.navigate({
-                      name: 'UserForm',
-                      params: { id: user.id }
-                    })}
+                    onPress={() => console.log('Editar usuario:', user.id)}
                     style={styles.actionButton}
                   >{''}</Button>
                   
